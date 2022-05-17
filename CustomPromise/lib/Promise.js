@@ -1,23 +1,28 @@
 (function (window){
+    const PENDING = 'pending'
+    const RESOLVED = 'resolved'
+    const REJECTED = 'rejected'
     // Promise constructor
     function Promise(excutor){
-        this,status = 'pending' //给promise对象指定status属性，初始值为pending
-        this.data = undefined   //给promise对象指定一个用于存储结果数据的属性
-        this.callback = []  //每个元素的结构：{onResolved（）{}， onRejected（）{}}
+        // 将当前的promise对象保存起来
+        const self = this
+        self.status = PENDING //给promise对象指定status属性，初始值为pending
+        self.data = undefined   //给promise对象指定一个用于存储结果数据的属性
+        self.callbacks = []  //每个元素的结构：{onResolved（）{}， onRejected（）{}}
 
         function resolve(value){
             //如果当前状态不是pending，直接结束
-            if(this.status!=='pending')
+            if(self.status!==PENDING)
                 return
             //将状态改为resolved
-            this.status = 'resolved'
+            self.status = RESOLVED
             //保存value数据
-            this.data = value
+            self.data = value
 
             //如果有待执行callback函数，立即异步执行回调onResolved
-            if (this.callbacks.length>0){
+            if (self.callbacks.length>0){
                 setTimeout(()=>{ //放入队列中执行所有成功的回调
-                    this.callbacks.forEach(callbacksobj=>{
+                    self.callbacks.forEach(callbacksobj=>{
                         callbacksobj.onResolved(value)
                     })
                 })
@@ -26,17 +31,17 @@
 
         function reject(reason){
             //如果当前状态不是pending，直接结束
-            if(this.status!=='pending')
+            if(self.status!==PENDING)
                 return
             //将状态改为rejected
-            this.status = 'rejected'
+            self.status = REJECTED
             //保存value数据
-            this.data = reason
+            self.data = reason
 
             //如果有待执行callback函数，立即异步执行回调onReject
-            if (this.callbacks.length>0){
+            if (self.callbacks.length>0){
                 setTimeout(()=>{ //放入队列中执行所有成功的回调
-                    this.callbacks.forEach(callbacksobj=>{
+                    self.callbacks.forEach(callbacksobj=>{
                         callbacksobj.onRejected(reason)
                     })
                 })
@@ -59,13 +64,62 @@
     //返回一个新的promise对象
     Promise.prototype.then = function (onResolved, onRejected){
 
+        //指定默认的失败的回调（实现错误、异常穿透的关键点）
+        onResolved = typeof onResolved==='function'? onResolved: value=>value
+        onRejected = typeof onRejected==='function'? onRejected: reason=>{throw reason} 
+        const self = this
+        
+        return new Promise((resolve, reject)=>{
+
+            //调用指定回调函数处理
+            function handle(callback){
+                try{
+                    const result = callback(self.data) 
+                    if (result instanceof Promise){
+                        // 如果回调函数返回是promise，return的promise结果就是这个promise的结果
+                        // result.then(
+                        //     value=>{resolve(value)}, //当result成功时，让return的promise也成功
+                        //     reason=>{reject(reason)} //当result失败时，让return的promise也失败
+                        // )
+                        result.then(resolve, reject)//上面版本的简洁写法
+                    }else{
+                        // 如果回调函数返回不是promise，return的promise就会成功，value就是返回的值
+                        resolve(result)
+                    }
+                }
+                catch(error){
+                    // 如果抛出异常，return的promise就会失败，reason就是error
+                    reject(error)
+                }
+            }
+
+            if (self.status === PENDING){
+                // 写入两个方法，同时修改status
+                self.callbacks.push({
+                    onResolved(value){ 
+                        handle(onResolved);
+                    },
+                    onRejected(reason){ 
+                        handle(onRejected);
+                    },
+                })
+            } else if (self.status === RESOLVED){
+                setTimeout(() => {
+                    handle(onResolved);
+                });
+            } else {
+                setTimeout(() => {
+                    handle(onRejected);
+                });
+            }
+        })
     }
 
     // promise prototype function .catch()
     //指定失败的回调函数
     //返回一个新的promise对象
     Promise.prototype.catch = function (onRejected){
-
+        return this.then(undefined, onRejected);
     }
 
     //promise function .resolve()
