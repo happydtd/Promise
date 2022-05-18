@@ -89,25 +89,25 @@
         const p2=Promise.resolve(Promise.resolve(3));
         const p3 = Promise.resolve(Promise.reject(4));
 
-        const pAll = Promise.all([p1,p2])
-        pAll.then(
-            values=>{
-                console.log('all onResolved()', values)
-            },
-            reason=>{
-                console.log('all onRejected()', reason)
-            },
-        )
-
-        // const pRace = Promise.race([p1,p2,p3])
-        // pRace.then(
-        //     value=>{
-        //         console.log('race onResolved()', value)
+        // const pAll = Promise.all([p1,p2])
+        // pAll.then(
+        //     values=>{
+        //         console.log('all onResolved()', values)
         //     },
         //     reason=>{
-        //         console.log('race onRejected()', reason)
+        //         console.log('all onRejected()', reason)
         //     },
         // )
+
+        const pRace = Promise.race([p1,p2,p3])
+        pRace.then(
+            value=>{
+                console.log('race onResolved()', value)
+            },
+            reason=>{
+                console.log('race onRejected()', reason)
+            },
+        )
     </script>
 </body>
 </html>

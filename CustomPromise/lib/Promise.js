@@ -159,7 +159,8 @@
 
         return new Promise((resolve, reject)=>{
             promises.forEach((p, index)=>{
-                p.then(
+                //如果p不是promise，就把它包装为promise， Promise.resolve(p)
+                Promise.resolve(p).then(
                     value=>{
                         resolvedCount ++
                         //values.push(value)， 不可以用因为promise的执行速度不同会导致结果秩序不对
@@ -178,8 +179,45 @@
     //promise function .all()
     //返回一个promise对象，结果由第一个完成的promise决定
     Promise.race = function (promises){
-    
+        return new Promise((resolve, reject)=>{
+            promises.forEach((p, index)=>{
+                //如果p不是promise，就把它包装为promise， Promise.resolve(p)
+                Promise.resolve(p).then(
+                    value=>{
+                        resolve(value)
+                    },
+                    reason=>{
+                        reject(reason)
+                    })
+            })
+        })
     }
+
+    //返回一个promise对象，它在指定的时间后才确定结果
+    Promise.resolveDelay = function (value, time){
+        //返回一个成功/失败的promise对象
+        return new Promise((resolve, reject)=>{
+            setTimeout(() => {
+              //value是promise
+             if(value instanceof Promise){
+                value.then(resolve, reject)
+             }else{
+                resolve(value) //value不是promise
+             }
+            }, time);
+            
+        })
+    }
+
+    //返回一个promise对象，它在指定的时间后才失败
+    Promise.rejectDelay = function (reason, time){
+        return new Promise((resolve, reject)=>{
+            setTimeout(() => {
+                reject(reason) 
+            }, time);
+        })
+    }
+
 
     window.Promise = Promise
 })(window)
